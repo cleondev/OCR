@@ -103,7 +103,17 @@ class OCRService:
                 session.add(db_image)
                 session.flush()
 
-                variants = self.preprocessor.generate(image)
+                preferred_variants = None
+                if hasattr(engine, "preferred_variants"):
+                    preferred_callable = getattr(engine, "preferred_variants")
+                    if callable(preferred_callable):
+                        preferred_variants = preferred_callable()
+                    else:
+                        preferred_variants = preferred_callable  # pragma: no cover - defensive
+                variants = self.preprocessor.generate(
+                    image,
+                    allowed_labels=preferred_variants,
+                )
                 for order, (label, variant_image) in enumerate(variants):
                     variant_path = run_dir / "preprocessed" / f"{db_image.label}_{label}.png"
                     variant_path.parent.mkdir(parents=True, exist_ok=True)
