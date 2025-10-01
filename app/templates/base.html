@@ -88,6 +88,17 @@
       .grid.two {
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       }
+      .form-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .form-note {
+        font-size: 0.85rem;
+        color: #64748b;
+      }
       .tag {
         display: inline-flex;
         align-items: center;
@@ -119,6 +130,92 @@
         border-radius: 8px;
         border: 1px solid #e2e8f0;
       }
+      .preprocess-group {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8fafc;
+      }
+      .preprocess-group__title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+      .preprocess-group__hint {
+        font-size: 0.8rem;
+        color: #64748b;
+      }
+      .preprocess-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+      }
+      .preprocess-grid__item p {
+        margin-top: 0;
+      }
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+      }
+      #loading-overlay[hidden] {
+        display: none;
+      }
+      .loading-dialog {
+        background: #fff;
+        border-radius: 16px;
+        padding: 2rem 2.5rem;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+        text-align: center;
+        max-width: 360px;
+      }
+      .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 4px solid #bfdbfe;
+        border-top-color: #1d4ed8;
+        margin: 0 auto 1rem;
+        animation: spin 1s linear infinite;
+      }
+      .loading-progress {
+        margin-top: 1.25rem;
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+        position: relative;
+      }
+      .loading-progress::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: 45%;
+        background: linear-gradient(90deg, rgba(37, 99, 235, 0) 0%, #2563eb 50%, rgba(37, 99, 235, 0) 100%);
+        animation: progress-slide 1.4s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes progress-slide {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(200%);
+        }
+      }
       footer {
         text-align: center;
         padding: 2rem 1rem 3rem;
@@ -141,5 +238,26 @@
     <footer>
       &copy; {{ now.year }} OCR Service. Triển khai minh hoạ.
     </footer>
+    <div id="loading-overlay" hidden>
+      <div class="loading-dialog">
+        <div class="loading-spinner"></div>
+        <p style="margin: 0; font-weight: 600; color: #1e293b;">Đang xử lý tài liệu…</p>
+        <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: #64748b;">Vui lòng chờ trong giây lát.</p>
+        <div class="loading-progress"></div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var overlay = document.getElementById("loading-overlay");
+        document.querySelectorAll("form.js-loading-form").forEach(function (form) {
+          form.addEventListener("submit", function () {
+            overlay.hidden = false;
+            form.querySelectorAll("button, input[type='submit']").forEach(function (control) {
+              control.setAttribute("disabled", "disabled");
+            });
+          });
+        });
+      });
+    </script>
   </body>
 </html>
