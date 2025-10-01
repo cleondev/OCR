@@ -45,7 +45,37 @@ class TrOCREngine:
                 raise
             self._model = model.to(self.device)
             self._model.eval()
+            self._ensure_generation_tokens()
         return self._processor, self._model
+
+    def _ensure_generation_tokens(self) -> None:
+        """Bổ sung các mã đặc biệt cần thiết cho quá trình sinh chuỗi."""
+
+        if self._processor is None or self._model is None:  # pragma: no cover - defensive
+            return
+
+        tokenizer = self._processor.tokenizer
+        generation_config = self._model.generation_config
+
+        pad_token_id = getattr(tokenizer, "pad_token_id", None)
+        if pad_token_id is not None and generation_config.pad_token_id is None:
+            generation_config.pad_token_id = pad_token_id
+        if pad_token_id is not None and getattr(self._model.config, "pad_token_id", None) is None:
+            self._model.config.pad_token_id = pad_token_id
+
+        bos_token_id = getattr(tokenizer, "bos_token_id", None)
+        cls_token_id = getattr(tokenizer, "cls_token_id", None)
+        start_token_id = bos_token_id if bos_token_id is not None else cls_token_id
+        if start_token_id is not None and generation_config.decoder_start_token_id is None:
+            generation_config.decoder_start_token_id = start_token_id
+        if start_token_id is not None and getattr(self._model.config, "decoder_start_token_id", None) is None:
+            self._model.config.decoder_start_token_id = start_token_id
+
+        eos_token_id = getattr(tokenizer, "eos_token_id", None)
+        if eos_token_id is not None and generation_config.eos_token_id is None:
+            generation_config.eos_token_id = eos_token_id
+        if eos_token_id is not None and getattr(self._model.config, "eos_token_id", None) is None:
+            self._model.config.eos_token_id = eos_token_id
 
     def set_model(self, model_name: Optional[str]) -> None:
         candidate = (model_name or settings.trocr_model_name).strip()
