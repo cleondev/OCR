@@ -36,6 +36,8 @@ Dockerfile          # Docker hóa dịch vụ
 
 - Mặc định Tesseract chạy với cấu hình `vie+eng` để ưu tiên tiếng Việt nhưng vẫn giữ lại khả năng nhận diện tiếng Anh.
 - PaddleOCR được cấu hình với mã ngôn ngữ `vi`.
+- Bộ từ điển tiếng Việt mặc định của PaddleOCR dựa trên bảng chữ cái Latin nên thiếu nhiều ký tự có dấu (`ă`, `â`, `ơ`, `ư`,...).
+  Dự án bổ sung tệp `app/resources/paddle_vi_dict.txt` để nạp vào PaddleOCR, nhờ đó loại bỏ hiện tượng nhận diện thành các ký tự gần đúng như `ä`.
 - Có thể thay đổi thông qua biến môi trường `OCR_TESS_LANG` và `OCR_PADDLE_LANG` trước khi khởi động dịch vụ.
 - Ngoài cấu hình mặc định, mỗi lần gọi API `/api/v1/ocr` đều có thể truyền thêm tham số `lang` (ví dụ `lang=vi` khi sử dụng PaddleOCR). Giao diện web cũng có ô nhập ngôn ngữ và tự động gợi ý giá trị mặc định theo từng động cơ.
 - Khi chạy bằng Dockerfile đi kèm, gói `tesseract-ocr-vie` đã được cài đặt sẵn để hỗ trợ tiếng Việt có dấu.
