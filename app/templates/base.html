@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}OCR Service{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f6f8fa;
+        color: #24292f;
+      }
+      header {
+        background-color: #0d6efd;
+        color: #fff;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+      }
+      main {
+        max-width: 1024px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 3rem;
+      }
+      a {
+        color: #0d6efd;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .card {
+        background-color: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      }
+      .card h2,
+      .card h3 {
+        margin-top: 0;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background-color: #0d6efd;
+        color: #fff;
+        border-radius: 999px;
+        padding: 0.5rem 1.25rem;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn.secondary {
+        background-color: #fff;
+        color: #0d6efd;
+        border: 1px solid #0d6efd;
+      }
+      .btn:hover {
+        filter: brightness(0.95);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table thead {
+        background-color: #f1f5f9;
+      }
+      table th,
+      table td {
+        padding: 0.75rem 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background-color: #e0f2fe;
+        color: #0c4a6e;
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .error {
+        background-color: #fee2e2;
+        color: #b91c1c;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background-color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+      img.preview {
+        max-width: 100%;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+      footer {
+        text-align: center;
+        padding: 2rem 1rem 3rem;
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+    </style>
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <header>
+      <h1>Hệ thống OCR</h1>
+      <p style="margin: 0.25rem 0 0; font-size: 0.95rem; opacity: 0.85;">
+        Giao diện quản lý và theo dõi các lần chạy OCR
+      </p>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    <footer>
+      &copy; {{ now.year }} OCR Service. Triển khai minh hoạ.
+    </footer>
+  </body>
+</html>

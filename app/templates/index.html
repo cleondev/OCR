@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}OCR Service - Tổng quan{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Tải tài liệu mới</h2>
+  <p>Chọn động cơ OCR và tải lên tài liệu (ảnh, PDF, Word) để bắt đầu xử lý.</p>
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+  <form action="/upload" method="post" enctype="multipart/form-data" class="grid two">
+    <label>
+      <span>Chọn động cơ OCR</span>
+      <select name="engine" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 0.5rem;">
+        {% for engine in engines %}
+        <option value="{{ engine }}" {% if engine == selected_engine %}selected{% endif %}>{{ engine|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Tài liệu đầu vào</span>
+      <input
+        type="file"
+        name="file"
+        accept=".png,.jpg,.jpeg,.tiff,.bmp,.pdf,.doc,.docx"
+        required
+        style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 0.5rem;"
+      />
+    </label>
+    <div>
+      <button class="btn" type="submit">Thực hiện OCR</button>
+      <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #64748b;">
+        Sau khi hoàn tất sẽ chuyển tới trang chi tiết kết quả.
+      </p>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Lịch sử các lần chạy gần đây</h2>
+  {% if runs %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Thời gian</th>
+          <th>Động cơ</th>
+          <th>Độ tin cậy</th>
+          <th>Kết quả tóm tắt</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td>{{ run.id }}</td>
+          <td>{{ run.created_at.strftime("%d/%m/%Y %H:%M:%S") }}</td>
+          <td><span class="tag">{{ run.engine|upper }}</span></td>
+          <td>
+            {% if run.best_confidence is not none %}
+              {{ '%.2f'|format(run.best_confidence * 100) }}%
+            {% else %}
+              N/A
+            {% endif %}
+          </td>
+          <td style="max-width: 360px;">
+            {% if run.summary_text %}
+              {{ run.summary_text[:120] }}{% if run.summary_text|length > 120 %}…{% endif %}
+            {% else %}
+              (Chưa có văn bản)
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <a class="btn secondary" href="/runs/{{ run.id }}">Xem chi tiết</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>Chưa có lần chạy nào. Hãy tải tài liệu để bắt đầu.</p>
+  {% endif %}
+</div>
+{% endblock %}
