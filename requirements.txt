@@ -11,3 +11,5 @@ paddlepaddle==2.6.2
 paddleocr==2.7.0.3
 python-docx==1.1.0
 numpy==1.26.4
+torch==2.2.2
+transformers==4.39.3

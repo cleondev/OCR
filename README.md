@@ -1,10 +1,10 @@
 # OCR Service
 
-Dịch vụ OCR mẫu được xây dựng cho hệ thống quản lý khoản vay. Mục tiêu là cung cấp API OCR mạnh mẽ có thể xử lý nhiều định dạng tài liệu (Word, PDF văn bản, PDF scan, ảnh) với hai động cơ lõi: Tesseract và PaddleOCR. Toàn bộ lịch sử các lần chạy OCR được lưu trữ trong SQLite cùng với các tệp trung gian để phục vụ việc kiểm tra, tái tạo.
+Dịch vụ OCR mẫu được xây dựng cho hệ thống quản lý khoản vay. Mục tiêu là cung cấp API OCR mạnh mẽ có thể xử lý nhiều định dạng tài liệu (Word, PDF văn bản, PDF scan, ảnh) với ba động cơ lõi: Tesseract, PaddleOCR và TrOCR (microsoft/trocr). Toàn bộ lịch sử các lần chạy OCR được lưu trữ trong SQLite cùng với các tệp trung gian để phục vụ việc kiểm tra, tái tạo.
 
 ## Tính năng chính
 
-- **API FastAPI**: Endpoint REST để tải tài liệu và lựa chọn động cơ OCR (`tesseract` hoặc `paddle`).
+- **API FastAPI**: Endpoint REST để tải tài liệu và lựa chọn động cơ OCR (`tesseract`, `paddle` hoặc `trocr`).
 - **Tiền xử lý ảnh**: Pipeline tự động gồm chuyển xám, cân bằng tương phản, lọc nhiễu, nhị phân hóa nhằm nâng cao độ chính xác OCR.
 - **Hỗ trợ đa định dạng**: Ảnh (`png`, `jpg`, `jpeg`, `tiff`, `bmp`), PDF, Word (`doc`, `docx`). Word được chuyển sang PDF bằng LibreOffice để trích xuất ảnh trang.
 - **Quản lý lịch sử**: Lưu vào SQLite thông tin tệp gốc, tệp chuyển đổi, ảnh gốc, ảnh tiền xử lý, văn bản OCR kèm độ tin cậy.
@@ -27,6 +27,7 @@ app/
     ocr_base.py         # Định nghĩa giao diện OCR
     tesseract_engine.py # Triển khai động cơ Tesseract
     paddle_engine.py    # Triển khai động cơ PaddleOCR
+    trocr_engine.py     # Triển khai động cơ TrOCR
     ocr_service.py      # Điều phối toàn bộ quy trình OCR
 requirements.txt    # Các phụ thuộc Python
 Dockerfile          # Docker hóa dịch vụ
@@ -36,9 +37,10 @@ Dockerfile          # Docker hóa dịch vụ
 
 - Mặc định Tesseract chạy với cấu hình `vie+eng` để ưu tiên tiếng Việt nhưng vẫn giữ lại khả năng nhận diện tiếng Anh.
 - PaddleOCR được cấu hình với mã ngôn ngữ `vi`.
+- TrOCR sử dụng model `microsoft/trocr-base-printed` phù hợp cho tài liệu in.
 - Bộ từ điển tiếng Việt mặc định của PaddleOCR dựa trên bảng chữ cái Latin nên thiếu nhiều ký tự có dấu (`ă`, `â`, `ơ`, `ư`,...).
   Dự án bổ sung tệp `app/resources/paddle_vi_dict.txt` để nạp vào PaddleOCR. Do mô hình Latin chỉ hỗ trợ tối đa 185 ký tự, tệp đã được tinh gọn về đúng kích thước này bằng cách thay thế các ký tự ít dùng bằng bảng chữ cái tiếng Việt mở rộng. Nếu vượt quá giới hạn, Paddle sẽ giải mã sai (xuất hiện ký tự `Ă` giữa các từ), vì vậy dịch vụ sẽ kiểm tra kích thước tệp và bỏ qua nếu không hợp lệ.
-- Có thể thay đổi thông qua biến môi trường `OCR_TESS_LANG` và `OCR_PADDLE_LANG` trước khi khởi động dịch vụ.
+- Có thể thay đổi thông qua biến môi trường `OCR_TESS_LANG`, `OCR_PADDLE_LANG` và `OCR_TROCR_MODEL` trước khi khởi động dịch vụ.
 - Ngoài cấu hình mặc định, mỗi lần gọi API `/api/v1/ocr` đều có thể truyền thêm tham số `lang` (ví dụ `lang=vi` khi sử dụng PaddleOCR). Giao diện web cũng có ô nhập ngôn ngữ và tự động gợi ý giá trị mặc định theo từng động cơ.
 - Khi chạy bằng Dockerfile đi kèm, gói `tesseract-ocr-vie` đã được cài đặt sẵn để hỗ trợ tiếng Việt có dấu.
 
