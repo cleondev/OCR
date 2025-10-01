@@ -15,7 +15,12 @@ class TesseractEngine:
     name = "tesseract"
 
     def __init__(self, lang: Optional[str] = None) -> None:
-        self.lang = lang or settings.tess_lang
+        initial = (lang or settings.tess_lang).strip()
+        self.lang = initial or settings.tess_lang
+
+    def set_language(self, lang: Optional[str]) -> None:
+        candidate = (lang or settings.tess_lang).strip()
+        self.lang = candidate or settings.tess_lang
 
     def run(self, image: Image.Image) -> OcrOutput:
         text = pytesseract.image_to_string(image, lang=self.lang)

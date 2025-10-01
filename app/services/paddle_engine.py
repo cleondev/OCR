@@ -15,12 +15,28 @@ class PaddleOCREngine:
     name = "paddle"
 
     def __init__(self, lang: Optional[str] = None) -> None:
-        self.lang = lang or settings.paddle_lang
-        self._ocr = PaddleOCR(use_angle_cls=True, lang=self.lang, show_log=False)
+        initial = (lang or settings.paddle_lang).strip()
+        self.lang = initial or settings.paddle_lang
+        self._ocr: PaddleOCR | None = None
+
+    def _ensure_ocr(self) -> PaddleOCR:
+        if self._ocr is None:
+            self._ocr = PaddleOCR(use_angle_cls=True, lang=self.lang, show_log=False)
+        return self._ocr
+
+    def set_language(self, lang: Optional[str]) -> None:
+        candidate = (lang or settings.paddle_lang).strip()
+        new_lang = candidate or settings.paddle_lang
+        if new_lang == self.lang and self._ocr is not None:
+            return
+        self.lang = new_lang
+        # Khởi tạo lại PaddleOCR ở lần chạy kế tiếp để áp dụng ngôn ngữ mới.
+        self._ocr = None
 
     def run(self, image: Image.Image) -> OcrOutput:
         np_image = np.array(image.convert("RGB"))
-        results = self._ocr.ocr(np_image, cls=True)
+        ocr = self._ensure_ocr()
+        results = ocr.ocr(np_image, cls=True)
         texts = []
         confidences = []
         for res in results:

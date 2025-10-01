@@ -7,6 +7,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import selectinload
 
 from .database import Base, engine, session_scope
@@ -32,8 +33,23 @@ def format_confidence(value: float | None) -> str | None:
 
 templates.env.filters["format_confidence"] = format_confidence
 
+
+def _ensure_language_column() -> None:
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("ocr_runs")}
+    if "language" not in columns:
+        with engine.connect() as connection:
+            connection.execute(text("ALTER TABLE ocr_runs ADD COLUMN language VARCHAR(50)"))
+            connection.commit()
+
+
 Base.metadata.create_all(bind=engine)
+_ensure_language_column()
 ocr_service = OCRService()
+
+
+def _default_lang_for(engine: str) -> str:
+    return ocr_service.default_language_for(engine) or ""
 
 
 def _detach_run(session, run: OCRRun) -> OCRRun:
@@ -71,9 +87,9 @@ def _load_run(run_id: int) -> OCRRun | None:
 
 
 @app.post("/api/v1/ocr", response_model=OCRResponseSchema)
-async def run_ocr(engine: str = "tesseract", file: UploadFile = File(...)):
+async def run_ocr(engine: str = "tesseract", file: UploadFile = File(...), lang: str | None = None):
     try:
-        run = ocr_service.process(file=file, engine_name=engine)
+        run = ocr_service.process(file=file, engine_name=engine, lang=lang)
     except Exception as exc:  # pragma: no cover - guard rails
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"run": run}
@@ -81,7 +97,7 @@ async def run_ocr(engine: str = "tesseract", file: UploadFile = File(...)):
 
 @app.get("/api/v1/ocr/engines", response_model=list[str])
 async def list_engines():
-    return list(ocr_service.engines.keys())
+    return ocr_service.list_engines()
 
 
 @app.get("/api/v1/ocr", response_model=list[OCRRunSchema])
@@ -100,8 +116,10 @@ async def get_run(run_id: int):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     runs = _load_runs()
-    engines = list(ocr_service.engines.keys())
-    selected_engine = "tesseract" if "tesseract" in ocr_service.engines else (engines[0] if engines else "")
+    engines = ocr_service.list_engines()
+    selected_engine = "tesseract" if "tesseract" in engines else (engines[0] if engines else "")
+    selected_lang = _default_lang_for(selected_engine) if selected_engine else ""
+    default_langs = {engine: _default_lang_for(engine) for engine in engines}
     return templates.TemplateResponse(
         "index.html",
         {
@@ -109,6 +127,8 @@ async def home(request: Request):
             "runs": runs,
             "engines": engines,
             "selected_engine": selected_engine,
+            "selected_lang": selected_lang,
+            "engine_default_langs": default_langs,
             "error": None,
             "now": datetime.utcnow(),
         },
@@ -119,13 +139,16 @@ async def home(request: Request):
 async def upload_document(
     request: Request,
     engine: str = Form("tesseract"),
+    lang: str | None = Form(None),
     file: UploadFile = File(...),
 ):
-    engines = list(ocr_service.engines.keys())
+    engines = ocr_service.list_engines()
     try:
-        run = ocr_service.process(file=file, engine_name=engine)
+        run = ocr_service.process(file=file, engine_name=engine, lang=lang)
     except Exception as exc:  # pragma: no cover - guard rails
         runs = _load_runs()
+        selected_lang = lang or _default_lang_for(engine)
+        default_langs = {name: _default_lang_for(name) for name in engines}
         return templates.TemplateResponse(
             "index.html",
             {
@@ -133,6 +156,8 @@ async def upload_document(
                 "runs": runs,
                 "engines": engines,
                 "selected_engine": engine,
+                "selected_lang": selected_lang,
+                "engine_default_langs": default_langs,
                 "error": str(exc),
                 "now": datetime.utcnow(),
             },

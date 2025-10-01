@@ -15,6 +15,7 @@ class OCRRun(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     engine: Mapped[str] = mapped_column(String(50))
+    language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     original_file_path: Mapped[str] = mapped_column(String)
     converted_file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     summary_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

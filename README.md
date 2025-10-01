@@ -10,6 +10,7 @@ Dịch vụ OCR mẫu được xây dựng cho hệ thống quản lý khoản v
 - **Quản lý lịch sử**: Lưu vào SQLite thông tin tệp gốc, tệp chuyển đổi, ảnh gốc, ảnh tiền xử lý, văn bản OCR kèm độ tin cậy.
 - **Lưu trữ tệp**: Toàn bộ tệp gốc, trang PDF, ảnh tiền xử lý được lưu trong thư mục `storage/` theo từng lần chạy.
 - **Docker hóa**: Dockerfile cài đặt đầy đủ phụ thuộc (Tesseract, LibreOffice, Poppler, PaddleOCR) để triển khai nhất quán.
+- **Tuỳ chọn ngôn ngữ theo từng lần chạy**: API và giao diện web cho phép nhập mã ngôn ngữ (`lang`) riêng cho từng động cơ, hỗ trợ PaddleOCR tiếng Việt (`vi`) cũng như các mã Tesseract (`vie+eng`, `eng`,...).
 
 ## Cấu trúc thư mục
 
@@ -36,6 +37,7 @@ Dockerfile          # Docker hóa dịch vụ
 - Mặc định Tesseract chạy với cấu hình `vie+eng` để ưu tiên tiếng Việt nhưng vẫn giữ lại khả năng nhận diện tiếng Anh.
 - PaddleOCR được cấu hình với mã ngôn ngữ `vi`.
 - Có thể thay đổi thông qua biến môi trường `OCR_TESS_LANG` và `OCR_PADDLE_LANG` trước khi khởi động dịch vụ.
+- Ngoài cấu hình mặc định, mỗi lần gọi API `/api/v1/ocr` đều có thể truyền thêm tham số `lang` (ví dụ `lang=vi` khi sử dụng PaddleOCR). Giao diện web cũng có ô nhập ngôn ngữ và tự động gợi ý giá trị mặc định theo từng động cơ.
 - Khi chạy bằng Dockerfile đi kèm, gói `tesseract-ocr-vie` đã được cài đặt sẵn để hỗ trợ tiếng Việt có dấu.
 
 ## Chạy dịch vụ cục bộ

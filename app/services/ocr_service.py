@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from fastapi import UploadFile
 from sqlalchemy.orm import selectinload
@@ -27,25 +27,45 @@ from .tesseract_engine import TesseractEngine
 class OCRService:
     def __init__(self) -> None:
         self.preprocessor = ImagePreprocessor()
-        self.engines: Dict[str, OCREngine] = {
-            "tesseract": TesseractEngine(),
-            "paddle": PaddleOCREngine(),
+        self._engine_factories: Dict[str, Callable[[Optional[str]], OCREngine]] = {
+            "tesseract": lambda lang=None: TesseractEngine(lang=lang),
+            "paddle": lambda lang=None: PaddleOCREngine(lang=lang),
         }
 
-    def get_engine(self, name: str) -> OCREngine:
-        if name not in self.engines:
-            raise ValueError(f"Unsupported OCR engine: {name}")
-        return self.engines[name]
+    def list_engines(self) -> List[str]:
+        return list(self._engine_factories.keys())
 
-    def process(self, file: UploadFile, engine_name: str) -> OCRRun:
-        engine = self.get_engine(engine_name)
+    def get_engine(self, name: str, *, lang: Optional[str] = None) -> OCREngine:
+        try:
+            factory = self._engine_factories[name]
+        except KeyError as exc:  # pragma: no cover - guard rails
+            raise ValueError(f"Unsupported OCR engine: {name}") from exc
+        engine = factory(lang)
+        if lang is not None and hasattr(engine, "set_language"):
+            engine.set_language(lang)
+        return engine
+
+    def default_language_for(self, name: str) -> Optional[str]:
+        if name == "tesseract":
+            return settings.tess_lang
+        if name == "paddle":
+            return settings.paddle_lang
+        return None
+
+    def process(self, file: UploadFile, engine_name: str, *, lang: Optional[str] = None) -> OCRRun:
+        resolved_lang = (lang.strip() if lang else None) or self.default_language_for(engine_name)
+        engine = self.get_engine(engine_name, lang=resolved_lang)
         run_dir = settings.data_dir / uuid.uuid4().hex
         original_dir = run_dir / "original"
         original_dir.mkdir(parents=True, exist_ok=True)
         original_path = original_dir / file.filename
         save_upload_file(file, original_path)
 
-        run = OCRRun(engine=engine.name, original_file_path=str(original_path))
+        run = OCRRun(
+            engine=engine.name,
+            original_file_path=str(original_path),
+            language=resolved_lang,
+        )
 
         images: List[Tuple[Path, Image.Image]] = []
         converted_pdf_path: Path | None = None

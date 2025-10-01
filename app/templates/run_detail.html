@@ -9,6 +9,14 @@
       <p><strong>Thời gian:</strong> {{ run.created_at.strftime("%d/%m/%Y %H:%M:%S") }}</p>
       <p><strong>Động cơ:</strong> <span class="tag">{{ run.engine|upper }}</span></p>
       <p>
+        <strong>Ngôn ngữ:</strong>
+        {% if run.language %}
+          <code>{{ run.language }}</code>
+        {% else %}
+          Mặc định
+        {% endif %}
+      </p>
+      <p>
         <strong>Độ tin cậy cao nhất:</strong>
         {% if run.best_confidence is not none %}
           {{ run.best_confidence|format_confidence }}

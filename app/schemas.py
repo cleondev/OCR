@@ -33,6 +33,7 @@ class OCRRunSchema(BaseModel):
     id: int
     created_at: datetime
     engine: str
+    language: Optional[str]
     original_file_path: Path
     converted_file_path: Optional[Path]
     summary_text: Optional[str]
