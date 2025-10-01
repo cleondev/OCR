@@ -11,7 +11,7 @@
       <p>
         <strong>Độ tin cậy cao nhất:</strong>
         {% if run.best_confidence is not none %}
-          {{ '%.2f'|format(run.best_confidence * 100) }}%
+          {{ run.best_confidence|format_confidence }}
         {% else %}
           N/A
         {% endif %}
@@ -43,7 +43,7 @@
       <h3 style="margin-top: 0;">{{ result.variant_label }}</h3>
       <p style="margin: 0.25rem 0 0.75rem; color: #475569;">
         {% if result.confidence is not none %}
-          Độ tin cậy: {{ '%.2f'|format(result.confidence * 100) }}%
+          Độ tin cậy: {{ result.confidence|format_confidence }}
         {% else %}
           Độ tin cậy: N/A
         {% endif %}
@@ -74,15 +74,25 @@
   {% endif %}
 
   <h3>Ảnh tiền xử lý</h3>
-  {% if preprocessed_images %}
-  <div class="grid two">
-    {% for image in preprocessed_images %}
-    <div>
-      <p><strong>{{ image.label }}</strong></p>
-      <img class="preview" src="/runs/{{ run.id }}/images/{{ image.id }}" alt="{{ image.label }}" />
+  {% if preprocessed_groups %}
+    {% for group in preprocessed_groups %}
+    <div class="preprocess-group">
+      {% if group.source %}
+      <div class="preprocess-group__title">
+        <span class="tag">{{ group.source.label }}</span>
+        <span class="preprocess-group__hint">Các bước tiền xử lý</span>
+      </div>
+      {% endif %}
+      <div class="preprocess-grid">
+        {% for image in group.variants %}
+        <div class="preprocess-grid__item">
+          <p><strong>{{ image.label }}</strong></p>
+          <img class="preview" src="/runs/{{ run.id }}/images/{{ image.id }}" alt="{{ image.label }}" />
+        </div>
+        {% endfor %}
+      </div>
     </div>
     {% endfor %}
-  </div>
   {% else %}
   <p>Không có ảnh tiền xử lý.</p>
   {% endif %}

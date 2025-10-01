@@ -18,6 +18,20 @@ app = FastAPI(title="OCR Service", version="1.0.0")
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
+
+def format_confidence(value: float | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value
+    if normalized > 1:
+        normalized = min(normalized, 100.0)
+    else:
+        normalized *= 100
+    return f"{normalized:.2f}%"
+
+
+templates.env.filters["format_confidence"] = format_confidence
+
 Base.metadata.create_all(bind=engine)
 ocr_service = OCRService()
 
@@ -134,10 +148,26 @@ async def run_detail(request: Request, run_id: int):
         raise HTTPException(status_code=404, detail="Run not found")
 
     source_images = sorted((img for img in run.images if img.kind == "source"), key=lambda img: img.sequence)
-    preprocessed_images = sorted(
-        (img for img in run.images if img.kind == "preprocessed"),
-        key=lambda img: (img.label, img.sequence),
-    )
+
+    preprocessed_map: dict[str, list[OCRImage]] = {}
+    for image in (img for img in run.images if img.kind == "preprocessed"):
+        parts = image.label.split("_")
+        base_label = "_".join(parts[:2]) if len(parts) >= 2 else image.label
+        preprocessed_map.setdefault(base_label, []).append(image)
+
+    preprocessed_groups = []
+    for source in source_images:
+        variants = sorted(preprocessed_map.get(source.label, []), key=lambda img: img.sequence)
+        if variants:
+            preprocessed_groups.append({"source": source, "variants": variants})
+
+    remaining_variants = []
+    for label, images in preprocessed_map.items():
+        if all(group["source"] is None or label != group["source"].label for group in preprocessed_groups):
+            remaining_variants.extend(images)
+
+    if remaining_variants:
+        preprocessed_groups.append({"source": None, "variants": sorted(remaining_variants, key=lambda img: (img.sequence, img.label))})
     results = sorted(
         run.text_results,
         key=lambda r: (r.confidence if r.confidence is not None else 0.0, len(r.text)),
@@ -150,7 +180,7 @@ async def run_detail(request: Request, run_id: int):
             "request": request,
             "run": run,
             "source_images": list(source_images),
-            "preprocessed_images": list(preprocessed_images),
+            "preprocessed_groups": preprocessed_groups,
             "results": results,
             "now": datetime.utcnow(),
         },
