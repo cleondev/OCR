@@ -73,7 +73,11 @@ class TrOCREngine:
             probabilities = []
             for step_scores, token_id in zip(scores, sequence[1:]):  # bỏ token BOS
                 probs = step_scores.softmax(dim=-1)
-                probabilities.append(probs[token_id].item())
+                token_index = int(token_id)
+                if probs.dim() == 2:
+                    probabilities.append(probs[0, token_index].item())
+                else:
+                    probabilities.append(probs[token_index].item())
             if probabilities:
                 confidence = float(sum(probabilities) / len(probabilities))
         return OcrOutput(text=text, confidence=confidence)
