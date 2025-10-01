@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Chi tiết OCR #{{ run.id }}{% endblock %}
+{% block content %}
+<a href="/" class="btn secondary" style="margin-bottom: 1.5rem; display: inline-flex;">&larr; Quay lại danh sách</a>
+<div class="card">
+  <h2>Thông tin phiên OCR #{{ run.id }}</h2>
+  <div class="grid two">
+    <div>
+      <p><strong>Thời gian:</strong> {{ run.created_at.strftime("%d/%m/%Y %H:%M:%S") }}</p>
+      <p><strong>Động cơ:</strong> <span class="tag">{{ run.engine|upper }}</span></p>
+      <p>
+        <strong>Độ tin cậy cao nhất:</strong>
+        {% if run.best_confidence is not none %}
+          {{ '%.2f'|format(run.best_confidence * 100) }}%
+        {% else %}
+          N/A
+        {% endif %}
+      </p>
+    </div>
+    <div>
+      <p><strong>Tệp gốc:</strong> {{ run.original_file_path }}</p>
+      {% if run.converted_file_path %}
+      <p><strong>Tệp chuyển đổi:</strong> {{ run.converted_file_path }}</p>
+      {% endif %}
+    </div>
+  </div>
+  <div style="margin-top: 1.25rem;">
+    <h3>Văn bản tổng hợp</h3>
+    {% if run.summary_text %}
+    <pre>{{ run.summary_text }}</pre>
+    {% else %}
+    <p>Chưa có văn bản tổng hợp.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Kết quả chi tiết</h2>
+  {% if results %}
+  <div class="grid two">
+    {% for result in results %}
+    <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; background: #f8fafc;">
+      <h3 style="margin-top: 0;">{{ result.variant_label }}</h3>
+      <p style="margin: 0.25rem 0 0.75rem; color: #475569;">
+        {% if result.confidence is not none %}
+          Độ tin cậy: {{ '%.2f'|format(result.confidence * 100) }}%
+        {% else %}
+          Độ tin cậy: N/A
+        {% endif %}
+      </p>
+      <pre>{{ result.text }}</pre>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>Chưa có kết quả OCR.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Hình ảnh</h2>
+  <h3>Ảnh gốc</h3>
+  {% if source_images %}
+  <div class="grid two">
+    {% for image in source_images %}
+    <div>
+      <p><strong>{{ image.label }}</strong></p>
+      <img class="preview" src="/runs/{{ run.id }}/images/{{ image.id }}" alt="{{ image.label }}" />
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>Không có ảnh gốc.</p>
+  {% endif %}
+
+  <h3>Ảnh tiền xử lý</h3>
+  {% if preprocessed_images %}
+  <div class="grid two">
+    {% for image in preprocessed_images %}
+    <div>
+      <p><strong>{{ image.label }}</strong></p>
+      <img class="preview" src="/runs/{{ run.id }}/images/{{ image.id }}" alt="{{ image.label }}" />
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>Không có ảnh tiền xử lý.</p>
+  {% endif %}
+</div>
+{% endblock %}

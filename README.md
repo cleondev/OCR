@@ -46,6 +46,11 @@ docker run -p 8000:8000 -v $(pwd)/storage:/app/storage ocr-service
 
 Sau khi container chạy, API sẵn sàng tại `http://localhost:8000`. Truy cập `http://localhost:8000/docs` để thử nghiệm Swagger UI.
 
+### Truy cập giao diện web
+
+Sau khi container chạy, truy cập `http://localhost:8000/` để mở giao diện quản trị. Tại đây có thể tải tài liệu,
+theo dõi lịch sử các phiên OCR và xem chi tiết từng trang ảnh/kết quả văn bản.
+
 ### Gọi thử API bằng `curl`
 
 ```bash
