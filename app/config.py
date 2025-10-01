@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     trocr_model_name: str = Field(
         default="microsoft/trocr-base-printed", env="OCR_TROCR_MODEL"
     )
+    # Có thể trỏ đến thư mục mô hình đã tải sẵn (offline).
+    trocr_model_path: Path | None = Field(default=None, env="OCR_TROCR_MODEL_PATH")
 
     class Config:
         env_file = ".env"
