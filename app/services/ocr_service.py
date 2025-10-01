@@ -23,6 +23,7 @@ from .ocr_base import OCREngine
 from .paddle_engine import PaddleOCREngine
 from .preprocess import ImagePreprocessor
 from .tesseract_engine import TesseractEngine
+from .trocr_engine import TrOCREngine
 
 class OCRService:
     def __init__(self) -> None:
@@ -30,6 +31,7 @@ class OCRService:
         self._engine_factories: Dict[str, Callable[[Optional[str]], OCREngine]] = {
             "tesseract": lambda lang=None: TesseractEngine(lang=lang),
             "paddle": lambda lang=None: PaddleOCREngine(lang=lang),
+            "trocr": lambda _=None: TrOCREngine(),
         }
 
     def list_engines(self) -> List[str]:
@@ -50,6 +52,8 @@ class OCRService:
             return settings.tess_lang
         if name == "paddle":
             return settings.paddle_lang
+        if name == "trocr":
+            return None
         return None
 
     def process(self, file: UploadFile, engine_name: str, *, lang: Optional[str] = None) -> OCRRun:

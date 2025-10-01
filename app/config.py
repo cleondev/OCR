@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     tess_lang: str = Field(default="vie+eng", env="OCR_TESS_LANG")
     # PaddleOCR sử dụng mã "vi" cho tiếng Việt.
     paddle_lang: str = Field(default="vi", env="OCR_PADDLE_LANG")
+    # TrOCR sử dụng tên mô hình trên Hugging Face, ví dụ "microsoft/trocr-base-printed".
+    trocr_model_name: str = Field(
+        default="microsoft/trocr-base-printed", env="OCR_TROCR_MODEL"
+    )
 
     class Config:
         env_file = ".env"
