@@ -33,6 +33,17 @@ class PaddleOCREngine:
         # Khởi tạo lại PaddleOCR ở lần chạy kế tiếp để áp dụng ngôn ngữ mới.
         self._ocr = None
 
+    def preferred_variants(self) -> tuple[str, ...]:
+        """Các bước tiền xử lý phù hợp nhất cho PaddleOCR.
+
+        PaddleOCR hoạt động tốt nhất khi giữ nguyên chi tiết và màu sắc của
+        dấu tiếng Việt. Các bước làm nổi bật như ``threshold`` có xu hướng
+        làm mất dấu, dẫn đến kết quả sai lệch. Vì vậy chỉ sử dụng các biến thể
+        giữ nguyên thông tin quan trọng.
+        """
+
+        return ("original", "grayscale", "contrast")
+
     def run(self, image: Image.Image) -> OcrOutput:
         np_image = np.array(image.convert("RGB"))
         ocr = self._ensure_ocr()

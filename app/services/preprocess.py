@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 from PIL import Image, ImageFilter, ImageOps
 
@@ -17,12 +17,29 @@ class ImagePreprocessor:
             ("threshold", self._threshold),
         )
 
-    def generate(self, image: Image.Image) -> List[Tuple[str, Image.Image]]:
+    def generate(
+        self,
+        image: Image.Image,
+        *,
+        allowed_labels: Optional[Iterable[str]] = None,
+    ) -> List[Tuple[str, Image.Image]]:
+        """Return the available image variants.
+
+        Some OCR engines hoạt động tốt hơn khi bỏ qua các bước xử lý ảnh
+        nhất định. Để hỗ trợ điều này, cho phép truyền vào ``allowed_labels``
+        nhằm giới hạn các biến thể trả về mà vẫn duy trì chuỗi xử lý cho các
+        bước tiếp theo.
+        """
+
         outputs: List[Tuple[str, Image.Image]] = []
         current = image
+        allowed: Optional[Set[str]] = set(allowed_labels) if allowed_labels is not None else None
         for label, fn in self.steps:
-            current = fn(current if label != "original" else image)
-            outputs.append((label, current))
+            base_image = image if label == "original" else current
+            next_image = fn(base_image)
+            if allowed is None or label in allowed:
+                outputs.append((label, next_image))
+            current = next_image
         return outputs
 
     @staticmethod
