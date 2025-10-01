@@ -31,6 +31,13 @@ requirements.txt    # Các phụ thuộc Python
 Dockerfile          # Docker hóa dịch vụ
 ```
 
+## Thiết lập ngôn ngữ OCR
+
+- Mặc định Tesseract chạy với cấu hình `vie+eng` để ưu tiên tiếng Việt nhưng vẫn giữ lại khả năng nhận diện tiếng Anh.
+- PaddleOCR được cấu hình với mã ngôn ngữ `vi`.
+- Có thể thay đổi thông qua biến môi trường `OCR_TESS_LANG` và `OCR_PADDLE_LANG` trước khi khởi động dịch vụ.
+- Khi chạy bằng Dockerfile đi kèm, gói `tesseract-ocr-vie` đã được cài đặt sẵn để hỗ trợ tiếng Việt có dấu.
+
 ## Chạy dịch vụ cục bộ
 
 ### Yêu cầu hệ thống
