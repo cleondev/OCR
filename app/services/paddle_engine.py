@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import statistics
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -9,6 +10,12 @@ from PIL import Image
 
 from ..config import settings
 from .ocr_base import OCREngine, OcrOutput
+
+
+PADDLE_VI_DICT_PATH = (
+    Path(__file__).resolve().parent.parent / "resources" / "paddle_vi_dict.txt"
+)
+# Đường dẫn tới từ điển tiếng Việt mở rộng cho PaddleOCR.
 
 
 class PaddleOCREngine:
@@ -21,7 +28,10 @@ class PaddleOCREngine:
 
     def _ensure_ocr(self) -> PaddleOCR:
         if self._ocr is None:
-            self._ocr = PaddleOCR(use_angle_cls=True, lang=self.lang, show_log=False)
+            ocr_kwargs = {"use_angle_cls": True, "lang": self.lang, "show_log": False}
+            if self.lang.lower().startswith("vi") and PADDLE_VI_DICT_PATH.exists():
+                ocr_kwargs["rec_char_dict_path"] = str(PADDLE_VI_DICT_PATH)
+            self._ocr = PaddleOCR(**ocr_kwargs)
         return self._ocr
 
     def set_language(self, lang: Optional[str]) -> None:
