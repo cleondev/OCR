@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 import torch
@@ -19,9 +20,24 @@ class TrOCREngine:
 
     name = "trocr"
 
-    def __init__(self, model_name: Optional[str] = None, device: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        device: Optional[str] = None,
+        model_path: Optional[Path | str] = None,
+    ) -> None:
         self.model_name = (model_name or settings.trocr_model_name).strip() or settings.trocr_model_name
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        resolved_path = model_path if model_path is not None else settings.trocr_model_path
+        self.model_path: Path | None
+        if resolved_path:
+            candidate = Path(resolved_path).expanduser()
+            if str(candidate).strip():
+                self.model_path = candidate
+            else:
+                self.model_path = None
+        else:
+            self.model_path = None
         self._processor: TrOCRProcessor | None = None
         self._model: VisionEncoderDecoderModel | None = None
 
@@ -33,20 +49,58 @@ class TrOCREngine:
     def _ensure_components(self) -> tuple[TrOCRProcessor, VisionEncoderDecoderModel]:
         if self._processor is None:
             try:
-                self._processor = TrOCRProcessor.from_pretrained(self.model_name)
+                self._processor = self._load_processor()
             except OSError as exc:  # pragma: no cover - chỉ log lỗi tải model
-                logger.error("Không thể tải TrOCR processor %s: %s", self.model_name, exc)
-                raise
+                logger.error(
+                    "Không thể tải TrOCR processor từ %s: %s",
+                    self._describe_source(),
+                    exc,
+                )
+                raise self._translate_os_error(exc) from exc
         if self._model is None:
             try:
-                model = VisionEncoderDecoderModel.from_pretrained(self.model_name)
+                model = self._load_model()
             except OSError as exc:  # pragma: no cover - chỉ log lỗi tải model
-                logger.error("Không thể tải TrOCR model %s: %s", self.model_name, exc)
-                raise
+                logger.error(
+                    "Không thể tải TrOCR model từ %s: %s",
+                    self._describe_source(),
+                    exc,
+                )
+                raise self._translate_os_error(exc) from exc
             self._model = model.to(self.device)
             self._model.eval()
             self._ensure_generation_tokens()
         return self._processor, self._model
+
+    def _describe_source(self) -> str:
+        if self.model_path is not None:
+            return f"đường dẫn {self.model_path}"
+        return f"mô hình Hugging Face '{self.model_name}'"
+
+    def _translate_os_error(self, exc: OSError) -> RuntimeError:
+        hint = (
+            "Đảm bảo máy chủ có thể truy cập huggingface.co hoặc tải sẵn mô hình và "
+            "đặt biến môi trường OCR_TROCR_MODEL_PATH trỏ tới thư mục đó."
+        )
+        if self.model_path is not None:
+            hint = (
+                "Kiểm tra lại đường dẫn OCR_TROCR_MODEL_PATH. Thư mục cần chứa các "
+                "tệp cấu hình và trọng số do Hugging Face phát hành."
+            )
+        message = (
+            f"Không thể tải thành phần TrOCR từ {self._describe_source()}: {exc}. {hint}"
+        )
+        return RuntimeError(message)
+
+    def _load_processor(self) -> TrOCRProcessor:
+        if self.model_path is not None:
+            return TrOCRProcessor.from_pretrained(str(self.model_path))
+        return TrOCRProcessor.from_pretrained(self.model_name)
+
+    def _load_model(self) -> VisionEncoderDecoderModel:
+        if self.model_path is not None:
+            return VisionEncoderDecoderModel.from_pretrained(str(self.model_path))
+        return VisionEncoderDecoderModel.from_pretrained(self.model_name)
 
     def _ensure_generation_tokens(self) -> None:
         """Bổ sung các mã đặc biệt cần thiết cho quá trình sinh chuỗi."""
