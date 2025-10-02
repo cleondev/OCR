@@ -25,6 +25,7 @@ class TrOCREngine:
         model_name: Optional[str] = None,
         device: Optional[str] = None,
         model_path: Optional[Path | str] = None,
+        generation_kwargs: Optional[dict] = None,
     ) -> None:
         self.model_name = (model_name or settings.trocr_model_name).strip() or settings.trocr_model_name
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -40,6 +41,15 @@ class TrOCREngine:
             self.model_path = None
         self._processor: TrOCRProcessor | None = None
         self._model: VisionEncoderDecoderModel | None = None
+        defaults = {
+            "max_new_tokens": 128,
+            "num_beams": 4,
+            "early_stopping": True,
+            "no_repeat_ngram_size": 2,
+        }
+        if generation_kwargs:
+            defaults.update(generation_kwargs)
+        self._generation_kwargs = defaults
 
     def preferred_variants(self) -> tuple[str, ...]:
         """Ưu tiên giữ nguyên chi tiết và độ tương phản tự nhiên."""
@@ -143,25 +153,31 @@ class TrOCREngine:
     def run(self, image: Image.Image) -> OcrOutput:
         processor, model = self._ensure_components()
         pixel_values = processor(images=image.convert("RGB"), return_tensors="pt").pixel_values.to(self.device)
+        generation_options = dict(self._generation_kwargs)
+        generation_options.update(
+            {
+                "output_scores": True,
+                "return_dict_in_generate": True,
+            }
+        )
         with torch.no_grad():
-            generated = model.generate(
-                pixel_values,
-                output_scores=True,
-                return_dict_in_generate=True,
-            )
+            generated = model.generate(pixel_values, **generation_options)
         sequence = generated.sequences[0]
         text = processor.batch_decode(sequence.unsqueeze(0), skip_special_tokens=True)[0].strip()
         confidence = None
-        scores = generated.scores
-        if scores:
-            probabilities = []
-            for step_scores, token_id in zip(scores, sequence[1:]):  # bỏ token BOS
-                probs = step_scores.softmax(dim=-1)
-                token_index = int(token_id)
-                if probs.dim() == 2:
-                    probabilities.append(probs[0, token_index].item())
-                else:
-                    probabilities.append(probs[token_index].item())
-            if probabilities:
-                confidence = float(sum(probabilities) / len(probabilities))
+        if getattr(generated, "sequences_scores", None) is not None:
+            confidence = float(generated.sequences_scores[0].exp().item())
+        else:
+            scores = generated.scores
+            if scores:
+                probabilities = []
+                for step_scores, token_id in zip(scores, sequence[1:]):  # bỏ token BOS
+                    probs = step_scores.softmax(dim=-1)
+                    token_index = int(token_id)
+                    if probs.dim() == 2:
+                        probabilities.append(probs[0, token_index].item())
+                    else:
+                        probabilities.append(probs[token_index].item())
+                if probabilities:
+                    confidence = float(sum(probabilities) / len(probabilities))
         return OcrOutput(text=text, confidence=confidence)
