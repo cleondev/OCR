@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+ENV TMPDIR=/var/tmp
+RUN mkdir -p "$TMPDIR" && chmod 1777 "$TMPDIR"
+
 WORKDIR /app
 
 COPY requirements.txt ./
