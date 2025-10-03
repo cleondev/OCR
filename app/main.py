@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
@@ -10,6 +12,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import selectinload
 
+from PIL import Image
+import pytesseract
+from pytesseract import Output
+
+from .config import settings
 from .database import Base, engine, session_scope
 from .models import OCRImage, OCRRun
 from .schemas import OCRResponseSchema, OCRRunSchema
@@ -131,6 +138,7 @@ async def home(request: Request):
             "engine_default_langs": default_langs,
             "error": None,
             "now": datetime.utcnow(),
+            "active_page": "dashboard",
         },
     )
 
@@ -160,6 +168,7 @@ async def upload_document(
                 "engine_default_langs": default_langs,
                 "error": str(exc),
                 "now": datetime.utcnow(),
+                "active_page": "dashboard",
             },
             status_code=400,
         )
@@ -208,7 +217,156 @@ async def run_detail(request: Request, run_id: int):
             "preprocessed_groups": preprocessed_groups,
             "results": results,
             "now": datetime.utcnow(),
+            "active_page": "dashboard",
         },
+    )
+
+
+def _render_labeling_template(
+    request: Request,
+    *,
+    image_data: str | None,
+    boxes: list[dict[str, object]],
+    image_width: int | None,
+    image_height: int | None,
+    filename: str | None,
+    error: str | None = None,
+    language: str | None = None,
+    status_code: int = 200,
+):
+    return templates.TemplateResponse(
+        "label_text.html",
+        {
+            "request": request,
+            "image_data": image_data,
+            "boxes": boxes,
+            "image_width": image_width,
+            "image_height": image_height,
+            "filename": filename,
+            "error": error,
+            "language": language,
+            "now": datetime.utcnow(),
+            "active_page": "labeling",
+            "settings": settings,
+        },
+        status_code=status_code,
+    )
+
+
+@app.get("/labeling", response_class=HTMLResponse)
+async def labeling_home(request: Request):
+    return _render_labeling_template(
+        request,
+        image_data=None,
+        boxes=[],
+        image_width=None,
+        image_height=None,
+        filename=None,
+    )
+
+
+@app.post("/labeling", response_class=HTMLResponse)
+async def labeling_detect(request: Request, file: UploadFile = File(...), lang: str | None = Form(None)):
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        return _render_labeling_template(
+            request,
+            image_data=None,
+            boxes=[],
+            image_width=None,
+            image_height=None,
+            filename=file.filename,
+            error="Không thể đọc dữ liệu từ tệp tải lên.",
+            status_code=400,
+        )
+
+    try:
+        image = Image.open(BytesIO(raw_bytes))
+    except Exception as exc:  # pragma: no cover - guard rails for invalid uploads
+        return _render_labeling_template(
+            request,
+            image_data=None,
+            boxes=[],
+            image_width=None,
+            image_height=None,
+            filename=file.filename,
+            error=f"Tệp không phải là ảnh hợp lệ: {exc}",
+            status_code=400,
+        )
+
+    image = image.convert("RGB")
+    width, height = image.size
+    language = (lang.strip() if lang else None) or settings.tess_lang
+
+    try:
+        data = pytesseract.image_to_data(image, lang=language, output_type=Output.DICT)
+    except Exception as exc:  # pragma: no cover - guard rails when OCR backend fails
+        return _render_labeling_template(
+            request,
+            image_data=None,
+            boxes=[],
+            image_width=None,
+            image_height=None,
+            filename=file.filename,
+            error=f"Không thể nhận diện văn bản: {exc}",
+            language=language,
+            status_code=500,
+        )
+
+    boxes: list[dict[str, object]] = []
+    total = len(data.get("text", []))
+    for index in range(total):
+        word = (data.get("text", [""])[index] or "").strip()
+        if not word:
+            continue
+
+        confidence_value = None
+        confidence_raw = data.get("conf", [None])[index]
+        if confidence_raw not in (None, ""):
+            try:
+                confidence_value = float(confidence_raw)
+            except (TypeError, ValueError):
+                confidence_value = None
+
+        if confidence_value is not None and confidence_value < 0:
+            continue
+
+        left = int(data.get("left", [0])[index] or 0)
+        top = int(data.get("top", [0])[index] or 0)
+        box_width = int(data.get("width", [0])[index] or 0)
+        box_height = int(data.get("height", [0])[index] or 0)
+
+        boxes.append(
+            {
+                "text": word,
+                "confidence": confidence_value,
+                "confidence_display": f"{confidence_value:.1f}" if confidence_value is not None else None,
+                "left": left,
+                "top": top,
+                "width": box_width,
+                "height": box_height,
+                "left_pct": (left / width * 100) if width else 0,
+                "top_pct": (top / height * 100) if height else 0,
+                "width_pct": (box_width / width * 100) if width else 0,
+                "height_pct": (box_height / height * 100) if height else 0,
+            }
+        )
+
+    boxes.sort(key=lambda item: (item["top"], item["left"]))
+
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    encoded_image = base64.b64encode(buffer.getvalue()).decode("ascii")
+    image_data = f"data:image/png;base64,{encoded_image}"
+
+    return _render_labeling_template(
+        request,
+        image_data=image_data,
+        boxes=boxes,
+        image_width=width,
+        image_height=height,
+        filename=file.filename,
+        language=language,
     )
 
 

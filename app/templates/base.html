@@ -18,12 +18,53 @@
       header {
         background-color: #0d6efd;
         color: #fff;
-        padding: 1.5rem;
+        padding: 1.75rem 1.5rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+      .header-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
       }
       header h1 {
         margin: 0;
-        font-size: 1.75rem;
+        font-size: 1.9rem;
+      }
+      .main-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 999px;
+        padding: 0.4rem 1rem;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-weight: 600;
+        border: 1px solid transparent;
+        transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+      }
+      .nav-link:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.35);
+        text-decoration: none;
+        transform: translateY(-1px);
+      }
+      .nav-link.active {
+        background: #fff;
+        color: #0d6efd;
+        border-color: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2);
+      }
+      @media (min-width: 720px) {
+        .header-inner {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
       }
       main {
         max-width: 1024px;
@@ -227,10 +268,18 @@
   </head>
   <body>
     <header>
-      <h1>Hệ thống OCR</h1>
-      <p style="margin: 0.25rem 0 0; font-size: 0.95rem; opacity: 0.85;">
-        Giao diện quản lý và theo dõi các lần chạy OCR
-      </p>
+      <div class="header-inner">
+        <div>
+          <h1>Hệ thống OCR</h1>
+          <p style="margin: 0.35rem 0 0; font-size: 0.98rem; opacity: 0.9;">
+            Giao diện quản lý, theo dõi kết quả OCR và dán nhãn văn bản trực quan
+          </p>
+        </div>
+        <nav class="main-nav" aria-label="Điều hướng chính">
+          <a class="nav-link{% if active_page == 'dashboard' %} active{% endif %}" href="/">Tổng quan OCR</a>
+          <a class="nav-link{% if active_page == 'labeling' %} active{% endif %}" href="/labeling">Dán nhãn văn bản</a>
+        </nav>
+      </div>
     </header>
     <main>
       {% block content %}{% endblock %}
