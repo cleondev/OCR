@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Dán nhãn văn bản - OCR Service{% endblock %}
+{% block head %}
+<style>
+  .labeling-description {
+    color: #475569;
+    font-size: 0.95rem;
+    margin-top: 0.35rem;
+  }
+  .labeling-canvas {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  }
+  .labeling-canvas img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  .labeling-overlay {
+    position: absolute;
+    inset: 0;
+  }
+  .label-box {
+    position: absolute;
+    border: 2px solid rgba(34, 197, 94, 0.85);
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.1);
+    background: rgba(34, 197, 94, 0.1);
+    color: #14532d;
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .label-box:hover {
+    background: rgba(34, 197, 94, 0.2);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.35);
+  }
+  .label-box span {
+    padding: 2px 4px;
+    background: rgba(255, 255, 255, 0.85);
+    border-top-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+  .label-box span + span {
+    margin-top: auto;
+    border-radius: 0;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 6px;
+    background: rgba(15, 118, 110, 0.85);
+    color: #f0fdfa;
+  }
+  .labeling-results {
+    margin-top: 1.5rem;
+  }
+  .labeling-results table td {
+    vertical-align: top;
+  }
+  .labeling-results code {
+    background: rgba(15, 23, 42, 0.08);
+    padding: 0.15rem 0.35rem;
+    border-radius: 6px;
+  }
+  @media (max-width: 640px) {
+    .label-box {
+      font-size: 0.65rem;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Dán nhãn văn bản</h2>
+  <p class="labeling-description">
+    Tải lên một ảnh chứa văn bản để hệ thống tự động nhận diện và khoanh vùng từng cụm từ.
+    Bạn có thể dùng kết quả để kiểm tra nhanh các vùng OCR trước khi gán nhãn thủ công.
+  </p>
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+  <form action="/labeling" method="post" enctype="multipart/form-data" class="grid two js-loading-form">
+    <label>
+      <span>Ảnh cần dán nhãn</span>
+      <input
+        type="file"
+        name="file"
+        accept=".png,.jpg,.jpeg,.tiff,.bmp,.webp"
+        required
+        style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 0.5rem;"
+      />
+      <span class="form-note">Hỗ trợ PNG, JPG, JPEG, TIFF, BMP, WEBP.</span>
+    </label>
+    <label>
+      <span>Mã ngôn ngữ (tuỳ chọn)</span>
+      <input
+        type="text"
+        name="lang"
+        value="{{ language or '' }}"
+        placeholder="Ví dụ: vie hoặc eng"
+        style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 0.5rem;"
+      />
+      <span class="form-note">Để trống để dùng cấu hình mặc định của hệ thống ({{ settings.tess_lang }}).</span>
+    </label>
+    <div class="form-actions">
+      <button class="btn" type="submit">Nhận diện &amp; khoanh vùng</button>
+      <span class="form-note">Quá trình xử lý diễn ra trực tiếp trên máy chủ, kết quả trả về ngay.</span>
+    </div>
+  </form>
+</div>
+
+{% if image_data %}
+<div class="card">
+  <h3>Kết quả dán nhãn{% if filename %} cho {{ filename }}{% endif %}</h3>
+  <p class="form-note" style="margin-bottom: 1rem;">
+    Tổng cộng phát hiện {{ boxes|length }} vùng văn bản. Di chuột lên từng khung để xem nội dung và độ tin cậy.
+  </p>
+  <div class="labeling-canvas">
+    <img src="{{ image_data }}" alt="Ảnh đã dán nhãn" />
+    <div class="labeling-overlay">
+      {% for box in boxes %}
+      <div
+        class="label-box"
+        style="left: {{ box.left_pct }}%; top: {{ box.top_pct }}%; width: {{ box.width_pct }}%; height: {{ box.height_pct }}%;"
+      >
+        <span>{{ box.text }}</span>
+        <span>{% if box.confidence_display is not none %}{{ box.confidence_display }}%{% else %}N/A{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="labeling-results">
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nội dung</th>
+            <th>Độ tin cậy</th>
+            <th>Vị trí (px)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for box in boxes %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><code>{{ box.text }}</code></td>
+            <td>
+              {% if box.confidence_display is not none %}
+                {{ box.confidence_display }}%
+              {% else %}
+                N/A
+              {% endif %}
+            </td>
+            <td>
+              trái: {{ box.left }}, trên: {{ box.top }}, rộng: {{ box.width }}, cao: {{ box.height }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
